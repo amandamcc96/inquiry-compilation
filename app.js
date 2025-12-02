@@ -14,6 +14,8 @@ async function loadSystems() {
   const res = await fetch(API);
   systems = await res.json();
   renderList(systems);
+
+  // If something was selected before, re-select it after reload
   if (selectedSystem) {
     const updated = systems.find(
       (s) => s.sheet === selectedSystem.sheet && s._rowIndex === selectedSystem._rowIndex
@@ -26,8 +28,10 @@ async function loadSystems() {
   }
 }
 
+// Load systems when the page opens
 loadSystems();
 
+// Filter as the user types
 searchEl.oninput = () => {
   const q = searchEl.value.toLowerCase();
   const filtered = systems.filter((s) =>
