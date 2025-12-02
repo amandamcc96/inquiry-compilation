@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Systems Lookup</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="app-header">
+      <h1>Systems Lookup</h1>
+      <p>Search ERPs, CRMs, and other systems, and edit Scope directly.</p>
+    </header>
+
+    <main class="app-main">
+      <section class="sidebar">
+        <div class="search-container">
+          <input id="search" placeholder="Search by system name..." />
+        </div>
+        <div id="list" class="list"></div>
+      </section>
+
+      <section class="details-panel">
+        <div id="details" class="details-card">
+          <p>Select a system on the left to see details.</p>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
