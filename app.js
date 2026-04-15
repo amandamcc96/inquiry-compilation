@@ -1,21 +1,83 @@
-// app.js
-
 const API = 'http://localhost:4000/api/systems';
 const UPDATE_API = 'http://localhost:4000/api/system-field';
 
 let systems = [];
 let selectedSystem = null;
+let activeLetter = 'All';
 
 const listEl = document.getElementById('list');
 const detailsEl = document.getElementById('details');
 const searchEl = document.getElementById('search');
+const alphabetEl = document.getElementById('alphabet-filter');
+
+function getSystemName(system) {
+  return (
+    system['ERP'] ||
+    system['CRM'] ||
+    system['Other System'] ||
+    system['Software'] ||
+    '(no name)'
+  ).trim();
+}
+
+function sortSystemsAlphabetically(items) {
+  return [...items].sort((a, b) =>
+    getSystemName(a).localeCompare(getSystemName(b), undefined, {
+      sensitivity: 'base',
+    })
+  );
+}
+
+function buildAlphabetFilter() {
+  const letters = ['All', ...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'];
+
+  alphabetEl.innerHTML = '';
+
+  letters.forEach((letter) => {
+    const btn = document.createElement('button');
+    btn.className = 'alphabet-btn';
+    if (letter === activeLetter) btn.classList.add('active');
+
+    btn.textContent = letter;
+    btn.onclick = () => {
+      activeLetter = letter;
+      buildAlphabetFilter();
+      applyFilters();
+    };
+
+    alphabetEl.appendChild(btn);
+  });
+}
+
+function applyFilters() {
+  const searchText = searchEl.value.toLowerCase().trim();
+
+  let filtered = [...systems];
+
+  if (activeLetter !== 'All') {
+    filtered = filtered.filter((system) =>
+      getSystemName(system).toUpperCase().startsWith(activeLetter)
+    );
+  }
+
+  if (searchText) {
+    filtered = filtered.filter((system) =>
+      getSystemName(system).toLowerCase().includes(searchText)
+    );
+  }
+
+  renderList(sortSystemsAlphabetically(filtered));
+}
 
 async function loadSystems() {
   const res = await fetch(API);
   systems = await res.json();
-  renderList(systems);
 
-  // If something was selected before, re-select it after reload
+  systems = sortSystemsAlphabetically(systems);
+
+  buildAlphabetFilter();
+  applyFilters();
+
   if (selectedSystem) {
     const updated = systems.find(
       (s) => s.sheet === selectedSystem.sheet && s._rowIndex === selectedSystem._rowIndex
@@ -28,30 +90,22 @@ async function loadSystems() {
   }
 }
 
-// Load systems when the page opens
-loadSystems();
-
-// Filter as the user types
 searchEl.oninput = () => {
-  const q = searchEl.value.toLowerCase();
-  const filtered = systems.filter((s) =>
-    getSystemName(s).toLowerCase().includes(q)
-  );
-  renderList(filtered);
+  applyFilters();
 };
-
-function getSystemName(system) {
-  return (
-    system['ERP'] ||
-    system['CRM'] ||
-    system['Other System'] ||
-    system['Software'] ||
-    '(no name)'
-  );
-}
 
 function renderList(items) {
   listEl.innerHTML = '';
+
+  if (items.length === 0) {
+    const empty = document.createElement('div');
+    empty.textContent = 'No systems found.';
+    empty.style.color = '#6b7280';
+    empty.style.padding = '8px 4px';
+    listEl.appendChild(empty);
+    return;
+  }
+
   items.forEach((system) => {
     const item = document.createElement('div');
     item.className = 'list-item';
@@ -77,6 +131,8 @@ function renderList(items) {
 
     listEl.appendChild(item);
   });
+
+  highlightSelected();
 }
 
 function highlightSelected() {
@@ -84,6 +140,7 @@ function highlightSelected() {
   items.forEach((item) => {
     const sheet = item.dataset.sheet;
     const rowIndex = Number(item.dataset.rowIndex);
+
     if (
       selectedSystem &&
       sheet === selectedSystem.sheet &&
@@ -114,7 +171,6 @@ function showDetails(system) {
   header.appendChild(badge);
   detailsEl.appendChild(header);
 
-  // Research doc button from Information column
   const info = (system['Information'] || '').trim();
   if (info && (info.startsWith('http://') || info.startsWith('https://'))) {
     const btn = document.createElement('button');
@@ -124,7 +180,6 @@ function showDetails(system) {
     detailsEl.appendChild(btn);
   }
 
-  // Render fields
   for (const key in system) {
     if (['id', 'sheet', '_rowIndex'].includes(key)) continue;
 
@@ -140,7 +195,6 @@ function showDetails(system) {
     valueWrapper.className = 'field-value';
 
     if (key === 'Scope') {
-      // Editable field
       const valueText = document.createElement('div');
       valueText.textContent = system[key] || '-';
       valueWrapper.appendChild(valueText);
@@ -157,7 +211,6 @@ function showDetails(system) {
       row.appendChild(valueWrapper);
       row.appendChild(actions);
     } else {
-      // Non-editable: show as read-only dropdown
       valueWrapper.classList.add('readonly-select');
       const select = document.createElement('select');
       const opt = document.createElement('option');
@@ -213,7 +266,7 @@ async function saveScope(system, columnName, newValue) {
   const payload = {
     sheet: system.sheet,
     rowIndex: system._rowIndex,
-    columnName: columnName,
+    columnName,
     value: newValue,
   };
 
@@ -231,3 +284,5 @@ async function saveScope(system, columnName, newValue) {
 
   await loadSystems();
 }
+
+loadSystems();
